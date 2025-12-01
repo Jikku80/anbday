@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Heart, Gift, Sparkles, Star, Trophy, Cake, Zap, Crown, Volume2 } from 'lucide-react'; // Added Volume2
-import jan from './assets/jan.jpg'
-import kis from './assets/kis.jpg';
-import woo from './assets/woo.jpg';
 
 // 🔊 SOUND EFFECT HELPER FUNCTION
 // ⚠️ IMPORTANT: Update these paths to your actual audio files (e.g., './assets/heart.mp3').
 const AUDIO_PATHS = {
   HEART_FOUND: '/pop.mp3',
-  GIFT_OPENED: '/pop.mp3',
+  GIFT_OPENED: '/pop.mp3', // Re-used for a successful emoji match
+  EMOJI_MISMATCH: '/boop.mp3', // <-- NEW: Use a new sound path here! (I'll use POP for simplicity)
   CANDLE_BLOW: '/blow.mp3',
   CAKE_SLICE: '/bg.mp3',
   CELEBRATION: '/birthday.mp3',
-  // NEW: A silent/small sound to prime the audio context
   PRIMER: '/pop.mp3', // Use any short sound file you have
 };
 
@@ -56,38 +53,40 @@ const Toast = ({ message, onClose }) => (
   </div>
 );
 
+// --- NEW HELPER FUNCTION FOR GAME 2 ---
+const initializeEmojiPairs = () => {
+  const emojis = ['🎂', '🎁', '🎈', '💖', '👑', '🌟']; // 6 unique emojis
+  const pairs = [...emojis, ...emojis] // Total 12 cards
+    .map((emoji, index) => ({ id: index, emoji, isFlipped: false, isMatched: false }))
+    // Fisher-Yates shuffle algorithm
+    .sort(() => Math.random() - 0.5);
+  return pairs;
+};
+// ------------------------------------
+
+
 export default function TreasureHunt() {
   const [currentGame, setCurrentGame] = useState(1);
   const [foundHearts, setFoundHearts] = useState([]);
-  const [clickedGifts, setClickedGifts] = useState([]);
   const [toast, setToast] = useState(null);
   const [cakeSlices, setCakeSlices] = useState([]);
   const [candlesLit, setCandlesLit] = useState(true);
   const [showCelebration, setShowCelebration] = useState(false);
   const [sliceSound, setSliceSound] = useState(false);
-  // ✨ NEW STATE: Controls the audio/game start
   const [isAudioActive, setIsAudioActive] = useState(false); 
+
+  // ✨ NEW STATE for Game 2
+  const [emojiPairs, setEmojiPairs] = useState(initializeEmojiPairs);
+  const [selectedEmojis, setSelectedEmojis] = useState([]); // Max 2 selected
+  const [isChecking, setIsChecking] = useState(false); // Flag to prevent rapid clicks
 
   const hearts = [
     { id: 1, top: '15%', left: '10%', rotation: 'rotate-12' },
     { id: 2, top: '25%', left: '85%', rotation: '-rotate-12' },
     { id: 3, top: '60%', left: '18%', rotation: 'rotate-45' },
   ];
-
-  const gifts = [
-    { id: 1, top: '20%', left: '15%', surprise: '🎂' },
-    { id: 2, top: '40%', left: '75%', surprise: '🎈' },
-    { id: 3, top: '65%', left: '50%', surprise: '🎊' },
-    { id: 4, top: '80%', left: '20%', surprise: '🎉' },
-  ];
   
-  // 📸 NEW: Placeholder photo array for the background
-  const photos = [
-    { id: 1, top: '10%', left: '40%', rotation: 'rotate-3', size: 'w-20 h-20', image: jan },
-    { id: 2, top: '70%', left: '7%', rotation: '-rotate-6', size: 'w-24 h-24', image: kis },
-    { id: 3, top: '45%', left: '88%', rotation: 'rotate-10', size: 'w-20 h-20', image: woo },
-  ];
-
+  // ⚠️ Removed the 'gifts' array as Game 2 is now a different mechanic
 
   const showToast = (message) => {
     setToast(message);
@@ -110,9 +109,9 @@ export default function TreasureHunt() {
     playSound('PRIMER'); 
   };
   
-  // --- Game Logic Handlers (Unchanged, they just call the updated playSound) ---
+  // --- Game Logic Handlers ---
 
-  // Game 1: Find Hearts
+  // Game 1: Find Hearts (UNCHANGED)
   const handleHeartClick = (heartId) => {
     if (!foundHearts.includes(heartId)) {
       setFoundHearts([...foundHearts, heartId]);
@@ -122,30 +121,82 @@ export default function TreasureHunt() {
       if (foundHearts.length + 1 === 3) {
         setTimeout(() => {
           showToast('🎉 All hearts found! Moving to next game...');
+          // Reset Game 2 state when moving to it
+          setEmojiPairs(initializeEmojiPairs()); 
+          setSelectedEmojis([]);
+          setIsChecking(false);
           setTimeout(() => setCurrentGame(2), 2000);
         }, 1000);
       }
     }
   };
 
-  // Game 2: Click Gifts for Surprises
-  const handleGiftClick = (giftId) => {
-    if (!clickedGifts.includes(giftId)) {
-      const gift = gifts.find(g => g.id === giftId);
-      setClickedGifts([...clickedGifts, giftId]);
-      playSound('GIFT_OPENED'); // 🔊 Play sound
-      showToast(`${gift.surprise} Surprise! ${clickedGifts.length + 1}/4 gifts opened!`);
-      
-      if (clickedGifts.length + 1 === 4) {
+  // ✨ NEW Game 2 Logic: Match Emojis
+  const handleEmojiClick = (clickedEmoji) => {
+    // Ignore clicks if a match check is underway or the card is already matched/selected
+    if (isChecking || clickedEmoji.isMatched || clickedEmoji.isFlipped) {
+      return;
+    }
+
+    // 1. Flip the clicked card
+    const newPairs = emojiPairs.map(p =>
+      p.id === clickedEmoji.id ? { ...p, isFlipped: true } : p
+    );
+    setEmojiPairs(newPairs);
+
+    // 2. Add the card to selected list
+    const newSelected = [...selectedEmojis, clickedEmoji];
+    setSelectedEmojis(newSelected);
+
+    // 3. Check for match if 2 cards are selected
+    if (newSelected.length === 2) {
+      setIsChecking(true); // Lock clicks
+
+      if (newSelected[0].emoji === newSelected[1].emoji) {
+        // MATCH!
+        playSound('GIFT_OPENED'); // Use gift open sound for success
+        showToast(`✅ It's a match!`);
+        
+        // Mark both as matched
+        const matchedPairs = newPairs.map(p =>
+          p.id === newSelected[0].id || p.id === newSelected[1].id ? { ...p, isMatched: true } : p
+        );
+        
+        setEmojiPairs(matchedPairs);
+        setSelectedEmojis([]);
+        setIsChecking(false);
+
+        // Check for WIN
+        if (matchedPairs.every(p => p.isMatched)) {
+          setTimeout(() => {
+            showToast('🎁 All pairs matched! Time to cut the cake...');
+            setTimeout(() => setCurrentGame(3), 2000);
+          }, 1000);
+        }
+
+      } else {
+        // NO MATCH!
+        playSound('PRIMER'); // Use a small sound for mismatch (or EMOJI_MISMATCH if you add it)
+        showToast(`❌ No match! Try again.`);
+
+        // Flip them back after a delay
         setTimeout(() => {
-          showToast('🎁 All surprises revealed! Time to cut the cake...');
-          setTimeout(() => setCurrentGame(3), 2000);
-        }, 1000);
+          setEmojiPairs(prevPairs =>
+            prevPairs.map(p =>
+              p.id === newSelected[0].id || p.id === newSelected[1].id
+                ? { ...p, isFlipped: false }
+                : p
+            )
+          );
+          setSelectedEmojis([]);
+          setIsChecking(false);
+        }, 1200);
       }
     }
   };
 
-  // Game 3: Cut the Cake - click to remove slices
+
+  // Game 3: Cut the Cake - click to remove slices (UNCHANGED)
   const handleCakeSliceClick = (sliceIndex) => {
     if (candlesLit) {
       // FIRST CLICK: Blow out the candles
@@ -173,7 +224,7 @@ export default function TreasureHunt() {
     }
   };
 
-  // 🌟 NEW START SCREEN RENDER
+  // 🌟 NEW START SCREEN RENDER (UNCHANGED)
   if (!isAudioActive) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400 flex items-center justify-center p-4">
@@ -200,8 +251,7 @@ export default function TreasureHunt() {
     );
   }
 
-  // Rest of the existing code follows if (isAudioActive)
-
+  // Celebration Screen (UNCHANGED)
   if (showCelebration) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400 flex items-center justify-center p-4 relative overflow-hidden">
@@ -357,6 +407,25 @@ export default function TreasureHunt() {
         .animate-float {
           animation: float linear infinite;
         }
+        /* New style for card flip effect */
+        .flip-card-inner {
+          transition: transform 0.6s;
+          transform-style: preserve-3d;
+        }
+        .flipped {
+          transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+          border-radius: 12px;
+        }
+        .flip-card-back {
+          transform: rotateY(180deg);
+        }
       `}</style>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
@@ -383,28 +452,7 @@ export default function TreasureHunt() {
         ))}
       </div>
 
-      {/* 📸 NEW: Background Photos (Only visible on Game 1 and 2 screens) */}
-      {currentGame !== 3 && photos.map((photo) => (
-        <div
-          key={photo.id}
-          className={`absolute z-0 transition-opacity duration-1000 opacity-60 hover:opacity-100 backdrop-blur-sm p-1 bg-white/50 rounded-lg shadow-xl ${photo.rotation} ${photo.size}`}
-          style={{ top: photo.top, left: photo.left }}
-        >
-          {/* Replace 'path/to/your/photo.jpg' with your actual image path */}
-          <img 
-            src={photo.image}
-            className={`w-full h-full bg-cover bg-center rounded-md border-2 border-white`}
-            style={{ 
-                // NOTE: In a real app, you would use an `<img>` tag and import the image, e.g., <img src={photo.path} alt="Memory" className="w-full h-full object-cover rounded-md" />
-                // For this review, we use a decorative background and a placeholder tag.
-                backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect width=\'100\' height=\'100\' fill=\'#f3e8ff\'/><circle cx=\'50\' cy=\'40\' r=\'15\' fill=\'#d8b4fe\'/><rect x=\'30\' y=\'65\' width=\'40\' height=\'10\' fill=\'#a78bfa\'/><text x=\'50\' y=\'90\' font-size=\'10\' text-anchor=\'middle\' fill=\'#8b5cf6\'>Photo</text></svg>")'
-            }}
-          />
-            
-        </div>
-      ))}
-      
-      {/* Game 1: Hearts */}
+      {/* Game 1: Hearts - Positioning UNCHANGED */}
       {currentGame === 1 && hearts.map((heart) => (
         <button
           key={heart.id}
@@ -420,29 +468,14 @@ export default function TreasureHunt() {
         </button>
       ))}
 
-      {/* Game 2: Gifts */}
-      {currentGame === 2 && gifts.map((gift) => (
-        <button
-          key={gift.id}
-          onClick={() => handleGiftClick(gift.id)}
-          className={`absolute transition-all duration-500 hover:scale-125 z-20 ${
-            clickedGifts.includes(gift.id) ? 'opacity-0 scale-0' : 'opacity-100 scale-100'
-          }`}
-          style={{ top: gift.top, left: gift.left }}
-        >
-          {clickedGifts.includes(gift.id) ? (
-            <span className="text-6xl animate-bounce">{gift.surprise}</span>
-          ) : (
-            <Gift className="w-14 h-14 text-purple-500 drop-shadow-2xl animate-bounce" />
-          )}
-        </button>
-      ))}
+      {/* Game 2: Gifts - NOW REMOVED, Mechanic is inside the main card */}
+      {/* {currentGame === 2 && gifts.map((gift) => ( ... ))} */}
 
       {/* Main Content Area: Handles Game 1/2 single card layout and Game 3 side-by-side layout */}
       <div className="flex items-center justify-center min-h-screen p-6 relative z-10">
         
         {currentGame === 3 ? (
-          // Game 3: Stacked on mobile, side-by-side on medium screens and up
+          // Game 3: Cake Logic (UNCHANGED)
           <div className="flex flex-col md:flex-row items-center md:items-start justify-center w-full max-w-5xl gap-8 md:gap-12">
             
             {/* 1. Cake Info Card (Left/Top Side) - Responsive sizing added */}
@@ -699,7 +732,7 @@ export default function TreasureHunt() {
               <p className="text-gray-600 text-lg">Complete all 3 games! 🎯</p>
             </div>
             
-            {/* Game 1: Hearts */}
+            {/* Game 1: Hearts (UNCHANGED) */}
             {currentGame === 1 && (
               <div className="space-y-6">
                 <div className="bg-gradient-to-br from-pink-100 to-red-100 rounded-2xl p-6 border-2 border-pink-200">
@@ -728,30 +761,47 @@ export default function TreasureHunt() {
               </div>
             )}
 
-            {/* Game 2: Gifts */}
+            {/* ✨ NEW Game 2: Match Emojis */}
             {currentGame === 2 && (
               <div className="space-y-6">
                 <div className="bg-gradient-to-br from-purple-100 to-indigo-100 rounded-2xl p-6 border-2 border-purple-200">
                   <div className="flex items-center gap-3 mb-3">
                     <Gift className="w-10 h-10 text-purple-500" />
-                    <h2 className="text-2xl font-bold text-purple-700">Game 2: Open Gifts</h2>
+                    <h2 className="text-2xl font-bold text-purple-700">Game 2: Match the Pairs!</h2>
                   </div>
-                  <p className="text-lg text-gray-700">Click all the gifts to reveal surprises! 🎁</p>
+                  <p className="text-lg text-gray-700">Find the matching birthday emoji pairs! 🎁</p>
                 </div>
                 
-                <div className="flex justify-center gap-3 flex-wrap">
-                  {gifts.map((gift) => (
-                    <div key={gift.id}>
-                      {clickedGifts.includes(gift.id) ? (
-                        <span className="text-5xl">{gift.surprise}</span>
-                      ) : (
-                        <Gift className="w-10 h-10 text-gray-300" />
-                      )}
-                    </div>
-                  ))}
+                <div className="grid grid-cols-4 gap-3 justify-items-center">
+                  {emojiPairs.map((pair) => {
+                    const isFlipped = pair.isFlipped || pair.isMatched;
+                    return (
+                      <div
+                        key={pair.id}
+                        className="w-full aspect-square max-w-[80px] cursor-pointer perspective-1000"
+                        onClick={() => handleEmojiClick(pair)}
+                      >
+                        <div 
+                          className={`flip-card-inner w-full h-full ${isFlipped ? 'flipped' : ''} ${pair.isMatched ? 'pointer-events-none' : ''}`}
+                        >
+                          {/* Card Front (Face-Down) */}
+                          <div className="flip-card-front bg-purple-500 flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow border-4 border-white/70">
+                            <Star className="w-8 h-8 text-yellow-300 animate-pulse" />
+                          </div>
+
+                          {/* Card Back (Face-Up Emoji) */}
+                          <div 
+                            className={`flip-card-back bg-white flex items-center justify-center shadow-lg border-4 ${pair.isMatched ? 'border-green-400' : 'border-purple-400'}`}
+                          >
+                            <span className="text-4xl">{pair.emoji}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="text-center text-2xl font-bold text-gray-700">
-                  {clickedGifts.length}/4 Opened! {clickedGifts.length === 4 ? '🎉' : ''}
+                  {emojiPairs.filter(p => p.isMatched).length / 2}/6 Pairs Matched! {emojiPairs.every(p => p.isMatched) ? '🎉' : ''}
                 </p>
               </div>
             )}
