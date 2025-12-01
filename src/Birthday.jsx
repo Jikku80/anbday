@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Heart, Gift, Sparkles, Star, Trophy, Cake, Zap, Crown, Volume2 } from 'lucide-react'; // Added Volume2
+import jan from './assets/jan.jpg'
+import kis from './assets/kis.jpg';
+import woo from './assets/woo.jpg';
 
 // 🔊 SOUND EFFECT HELPER FUNCTION
 // ⚠️ IMPORTANT: Update these paths to your actual audio files (e.g., './assets/heart.mp3').
@@ -77,6 +80,14 @@ export default function TreasureHunt() {
     { id: 3, top: '65%', left: '50%', surprise: '🎊' },
     { id: 4, top: '80%', left: '20%', surprise: '🎉' },
   ];
+  
+  // 📸 NEW: Placeholder photo array for the background
+  const photos = [
+    { id: 1, top: '10%', left: '40%', rotation: 'rotate-3', size: 'w-20 h-20', image: jan },
+    { id: 2, top: '70%', left: '7%', rotation: '-rotate-6', size: 'w-24 h-24', image: kis },
+    { id: 3, top: '45%', left: '88%', rotation: 'rotate-10', size: 'w-20 h-20', image: woo },
+  ];
+
 
   const showToast = (message) => {
     setToast(message);
@@ -372,6 +383,27 @@ export default function TreasureHunt() {
         ))}
       </div>
 
+      {/* 📸 NEW: Background Photos (Only visible on Game 1 and 2 screens) */}
+      {currentGame !== 3 && photos.map((photo) => (
+        <div
+          key={photo.id}
+          className={`absolute z-0 transition-opacity duration-1000 opacity-60 hover:opacity-100 backdrop-blur-sm p-1 bg-white/50 rounded-lg shadow-xl ${photo.rotation} ${photo.size}`}
+          style={{ top: photo.top, left: photo.left }}
+        >
+          {/* Replace 'path/to/your/photo.jpg' with your actual image path */}
+          <img 
+            src={photo.image}
+            className={`w-full h-full bg-cover bg-center rounded-md border-2 border-white`}
+            style={{ 
+                // NOTE: In a real app, you would use an `<img>` tag and import the image, e.g., <img src={photo.path} alt="Memory" className="w-full h-full object-cover rounded-md" />
+                // For this review, we use a decorative background and a placeholder tag.
+                backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect width=\'100\' height=\'100\' fill=\'#f3e8ff\'/><circle cx=\'50\' cy=\'40\' r=\'15\' fill=\'#d8b4fe\'/><rect x=\'30\' y=\'65\' width=\'40\' height=\'10\' fill=\'#a78bfa\'/><text x=\'50\' y=\'90\' font-size=\'10\' text-anchor=\'middle\' fill=\'#8b5cf6\'>Photo</text></svg>")'
+            }}
+          />
+            
+        </div>
+      ))}
+      
       {/* Game 1: Hearts */}
       {currentGame === 1 && hearts.map((heart) => (
         <button
