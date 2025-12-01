@@ -1,17 +1,54 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, Gift, Sparkles, Star, Trophy, Cake, Zap, Crown, Volume2 } from 'lucide-react'; // Added Volume2
+import { Heart, Gift, Sparkles, Star, Trophy, Cake, Zap, Crown, Volume2 } from 'lucide-react'; 
+import jan from './assets/jan.jpg';
+import kis from './assets/kis.jpg';
+import woo from './assets/woo.jpg';
 
 // 🔊 SOUND EFFECT HELPER FUNCTION
 // ⚠️ IMPORTANT: Update these paths to your actual audio files (e.g., './assets/heart.mp3').
 const AUDIO_PATHS = {
   HEART_FOUND: '/pop.mp3',
   GIFT_OPENED: '/pop.mp3', // Re-used for a successful emoji match
-  EMOJI_MISMATCH: '/boop.mp3', // <-- NEW: Use a new sound path here! (I'll use POP for simplicity)
   CANDLE_BLOW: '/blow.mp3',
   CAKE_SLICE: '/bg.mp3',
   CELEBRATION: '/birthday.mp3',
-  PRIMER: '/pop.mp3', // Use any short sound file you have
+  PRIMER: '/pop.mp3', 
 };
+
+// 🖼️ PHOTO FRAME DATA - START
+// ⚠️ IMPORTANT: REPLACE these URLs with the actual links to the birthday person's photos!
+const FRAME_1_URL = jan; // Placeholder 1 (Replace with your link)
+const FRAME_2_URL = kis; // Placeholder 2 (Replace with your link)
+const FRAME_3_URL = woo; // Placeholder 3 (Replace with your link)
+
+const photoFrames = [
+  { 
+    id: 1, 
+    top: '10%', 
+    left: '5%', 
+    rotation: 'rotate-[-5deg]', 
+    // w-32/h-32 on mobile, w-40/h-40 on small screens, w-48/h-48 on large screens
+    widthClass: 'w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48', 
+    imageUrl: FRAME_1_URL 
+  },
+  { 
+    id: 2, 
+    top: '50%', 
+    right: '10%', 
+    rotation: 'rotate-[10deg]', 
+    widthClass: 'w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40', 
+    imageUrl: FRAME_2_URL 
+  },
+  { 
+    id: 3, 
+    bottom: '5%', 
+    left: '30%', 
+    rotation: 'rotate-[25deg]', 
+    widthClass: 'w-28 h-28 sm:w-36 sm:h-36 lg:w-44 lg:h-44', 
+    imageUrl: FRAME_3_URL 
+  },
+];
+// 🖼️ PHOTO FRAME DATA - END
 
 // ⚠️ MODIFIED playSound to use isAudioActive check
 const playSound = (soundKey) => {
@@ -23,11 +60,8 @@ const playSound = (soundKey) => {
   
   try {
     const sound = new Audio(path);
-    // Ensure sound is played. Autoplay policy check is managed by the new 'Start Screen'
     sound.play().catch(error => {
       console.error(`Audio playback failed for ${soundKey}:`, error);
-      // NOTE: If this fails, it's usually the Autoplay Policy. 
-      // The new start screen should prevent this, but it's good to keep the catch.
     });
   } catch (e) {
     console.error("Error creating or playing audio object:", e);
@@ -53,12 +87,11 @@ const Toast = ({ message, onClose }) => (
   </div>
 );
 
-// --- NEW HELPER FUNCTION FOR GAME 2 ---
+// --- HELPER FUNCTION FOR GAME 2 (UNCHANGED) ---
 const initializeEmojiPairs = () => {
   const emojis = ['🎂', '🎁', '🎈', '💖', '👑', '🌟']; // 6 unique emojis
   const pairs = [...emojis, ...emojis] // Total 12 cards
     .map((emoji, index) => ({ id: index, emoji, isFlipped: false, isMatched: false }))
-    // Fisher-Yates shuffle algorithm
     .sort(() => Math.random() - 0.5);
   return pairs;
 };
@@ -66,7 +99,8 @@ const initializeEmojiPairs = () => {
 
 
 export default function TreasureHunt() {
-  const [currentGame, setCurrentGame] = useState(1);
+  // Current game is 1-3 (Cake is 3)
+  const [currentGame, setCurrentGame] = useState(1); 
   const [foundHearts, setFoundHearts] = useState([]);
   const [toast, setToast] = useState(null);
   const [cakeSlices, setCakeSlices] = useState([]);
@@ -75,47 +109,43 @@ export default function TreasureHunt() {
   const [sliceSound, setSliceSound] = useState(false);
   const [isAudioActive, setIsAudioActive] = useState(false); 
 
-  // ✨ NEW STATE for Game 2
+  // Game 2: Emoji Match State (UNCHANGED)
   const [emojiPairs, setEmojiPairs] = useState(initializeEmojiPairs);
-  const [selectedEmojis, setSelectedEmojis] = useState([]); // Max 2 selected
-  const [isChecking, setIsChecking] = useState(false); // Flag to prevent rapid clicks
-
+  const [selectedEmojis, setSelectedEmojis] = useState([]);
+  const [isChecking, setIsChecking] = useState(false); 
+  
   const hearts = [
     { id: 1, top: '15%', left: '10%', rotation: 'rotate-12' },
     { id: 2, top: '25%', left: '85%', rotation: '-rotate-12' },
     { id: 3, top: '60%', left: '18%', rotation: 'rotate-45' },
   ];
   
-  // ⚠️ Removed the 'gifts' array as Game 2 is now a different mechanic
 
   const showToast = (message) => {
     setToast(message);
     setTimeout(() => setToast(null), 3000);
   };
 
-  // 🎂 AUDIO EFFECT: Play sound when celebration page opens
+  // 🎂 AUDIO EFFECT: Play sound when celebration page opens (UNCHANGED)
   useEffect(() => {
-    // ⚠️ CHECK isAudioActive before playing
     if (showCelebration && isAudioActive) { 
       playSound('CELEBRATION');
     }
-  }, [showCelebration, isAudioActive]); // Added isAudioActive dependency
+  }, [showCelebration, isAudioActive]); 
 
-  // 🎧 NEW HANDLER: For the start button
+  // 🎧 NEW HANDLER: For the start button (UNCHANGED)
   const handleStartGame = () => {
-    // 1. Set the flag to true to start the game
     setIsAudioActive(true);
-    // 2. Play a sound immediately to ensure the audio context is unlocked
     playSound('PRIMER'); 
   };
   
   // --- Game Logic Handlers ---
 
-  // Game 1: Find Hearts (UNCHANGED)
+  // Game 1: Find Hearts (UNCHANGED logic, transitions to Game 2)
   const handleHeartClick = (heartId) => {
     if (!foundHearts.includes(heartId)) {
       setFoundHearts([...foundHearts, heartId]);
-      playSound('HEART_FOUND'); // 🔊 Play sound
+      playSound('HEART_FOUND'); 
       showToast(`💖 Heart found! ${foundHearts.length + 1}/3`);
       
       if (foundHearts.length + 1 === 3) {
@@ -131,33 +161,28 @@ export default function TreasureHunt() {
     }
   };
 
-  // ✨ NEW Game 2 Logic: Match Emojis
+  // Game 2 Logic: Match Emojis (Updated WIN Transition to Game 3)
   const handleEmojiClick = (clickedEmoji) => {
-    // Ignore clicks if a match check is underway or the card is already matched/selected
     if (isChecking || clickedEmoji.isMatched || clickedEmoji.isFlipped) {
       return;
     }
 
-    // 1. Flip the clicked card
     const newPairs = emojiPairs.map(p =>
       p.id === clickedEmoji.id ? { ...p, isFlipped: true } : p
     );
     setEmojiPairs(newPairs);
 
-    // 2. Add the card to selected list
     const newSelected = [...selectedEmojis, clickedEmoji];
     setSelectedEmojis(newSelected);
 
-    // 3. Check for match if 2 cards are selected
     if (newSelected.length === 2) {
-      setIsChecking(true); // Lock clicks
+      setIsChecking(true); 
 
       if (newSelected[0].emoji === newSelected[1].emoji) {
         // MATCH!
-        playSound('GIFT_OPENED'); // Use gift open sound for success
+        playSound('GIFT_OPENED'); 
         showToast(`✅ It's a match!`);
         
-        // Mark both as matched
         const matchedPairs = newPairs.map(p =>
           p.id === newSelected[0].id || p.id === newSelected[1].id ? { ...p, isMatched: true } : p
         );
@@ -166,20 +191,20 @@ export default function TreasureHunt() {
         setSelectedEmojis([]);
         setIsChecking(false);
 
-        // Check for WIN
+        // Check for WIN - Transition to Game 3 (Cake)
         if (matchedPairs.every(p => p.isMatched)) {
           setTimeout(() => {
             showToast('🎁 All pairs matched! Time to cut the cake...');
+            // Transition to NEW Game 3 (Cake)
             setTimeout(() => setCurrentGame(3), 2000);
           }, 1000);
         }
 
       } else {
         // NO MATCH!
-        playSound('PRIMER'); // Use a small sound for mismatch (or EMOJI_MISMATCH if you add it)
+        playSound('PRIMER'); 
         showToast(`❌ No match! Try again.`);
 
-        // Flip them back after a delay
         setTimeout(() => {
           setEmojiPairs(prevPairs =>
             prevPairs.map(p =>
@@ -196,11 +221,11 @@ export default function TreasureHunt() {
   };
 
 
-  // Game 3: Cut the Cake - click to remove slices (UNCHANGED)
+  // Game 3: Cut the Cake - click to remove slices (UNCHANGED logic)
   const handleCakeSliceClick = (sliceIndex) => {
     if (candlesLit) {
       // FIRST CLICK: Blow out the candles
-      playSound('CANDLE_BLOW'); // 🔊 Play blow sound
+      playSound('CANDLE_BLOW'); 
       setCandlesLit(false);
       showToast('🌬️ Make a wish! Candles blown out. Now, start cutting the cake!');
       return;
@@ -209,7 +234,7 @@ export default function TreasureHunt() {
     // SUBSEQUENT CLICKS: Cut slices
     if (!cakeSlices.includes(sliceIndex)) {
       if (!sliceSound){
-        playSound('CAKE_SLICE'); // 🔊 Play slice sound
+        playSound('CAKE_SLICE'); 
         setSliceSound(true);
       }
       setCakeSlices([...cakeSlices, sliceIndex]);
@@ -224,14 +249,14 @@ export default function TreasureHunt() {
     }
   };
 
-  // 🌟 NEW START SCREEN RENDER (UNCHANGED)
+  // 🌟 START SCREEN RENDER (UNCHANGED)
   if (!isAudioActive) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400 flex items-center justify-center p-4">
         <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-10 max-w-lg w-full text-center relative z-10">
           <Sparkles className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-spin" style={{ animationDuration: '5s' }} />
           <h1 className="text-4xl font-bold text-purple-600 mb-4">
-            An Game!
+            An Game
           </h1>
           <p className="text-xl text-gray-700 mb-8">
             Click 'Start' to enable sounds and begin your special game!
@@ -299,17 +324,17 @@ export default function TreasureHunt() {
           /* NEW ANIMATION: Invitation Open */
           @keyframes invitation-open {
             0% {
-              transform: scale(0.5) rotateX(90deg) translateY(100vh); /* Start scaled down, flipped, and off screen */
+              transform: scale(0.5) rotateX(90deg) translateY(100vh); 
               opacity: 0;
             }
             100% {
-              transform: scale(1) rotateX(0deg) translateY(0); /* End at normal size and rotation */
+              transform: scale(1) rotateX(0deg) translateY(0); 
               opacity: 1;
             }
           }
           .animate-invitation-open {
             animation: invitation-open 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-            transform-style: preserve-3d; /* Required for good 3D rotation */
+            transform-style: preserve-3d;
           }
         `}</style>
 
@@ -430,9 +455,9 @@ export default function TreasureHunt() {
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       
-      {/* Animated background elements */}
+      {/* RESTORED Animated background elements (Game 1, 2) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(15)].map((_, i) => (
+        {[...Array(25)].map((_, i) => (
           <div
             key={i}
             className="absolute animate-float"
@@ -443,14 +468,42 @@ export default function TreasureHunt() {
               animationDuration: `${5 + Math.random() * 10}s`
             }}
           >
-            {i % 2 === 0 ? (
-              <Sparkles className="w-6 h-6 text-white opacity-40" />
+            {i % 4 === 0 ? (
+              <Heart className="w-6 h-6 text-pink-200 opacity-60 fill-pink-200" />
+            ) : i % 4 === 1 ? (
+              <Sparkles className="w-5 h-5 text-yellow-200 opacity-60" />
+            ) : i % 4 === 2 ? (
+              <Star className="w-4 h-4 text-purple-200 opacity-60 fill-purple-200" />
             ) : (
-              <Zap className="w-5 h-5 text-yellow-200 opacity-40" />
+              <Crown className="w-5 h-5 text-yellow-300 opacity-60" />
             )}
           </div>
         ))}
       </div>
+      
+      {/* 🖼️ PHOTO FRAMES BACKGROUND (Only visible in Game 1 and 2) */}
+      {(currentGame === 1 || currentGame === 2) && photoFrames.map((frame) => (
+        <div
+          key={frame.id}
+          className={`absolute z-10 transition-transform duration-500 hover:scale-105 ${frame.rotation} ${frame.widthClass}`}
+          style={{ 
+            top: frame.top, 
+            left: frame.left, 
+            right: frame.right, 
+            bottom: frame.bottom,
+            // ⚠️ IMPORTANT: REPLACE THIS URL with your image URL!
+            backgroundImage: `url(${frame.imageUrl})`, 
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            // Ensure no flicker on hover/rotation
+            transformOrigin: 'center', 
+          }}
+        >
+          {/* Frame border and style */}
+          <div className="w-full h-full border-8 border-white/90 rounded-2xl shadow-2xl p-1 bg-gray-200/30 backdrop-blur-xs overflow-hidden flex items-center justify-center">
+          </div>
+        </div>
+      ))}
 
       {/* Game 1: Hearts - Positioning UNCHANGED */}
       {currentGame === 1 && hearts.map((heart) => (
@@ -468,14 +521,12 @@ export default function TreasureHunt() {
         </button>
       ))}
 
-      {/* Game 2: Gifts - NOW REMOVED, Mechanic is inside the main card */}
-      {/* {currentGame === 2 && gifts.map((gift) => ( ... ))} */}
-
       {/* Main Content Area: Handles Game 1/2 single card layout and Game 3 side-by-side layout */}
       <div className="flex items-center justify-center min-h-screen p-6 relative z-10">
         
+        {/* Cake game is now currentGame === 3 */}
         {currentGame === 3 ? (
-          // Game 3: Cake Logic (UNCHANGED)
+          // Game 3: Cake Logic 
           <div className="flex flex-col md:flex-row items-center md:items-start justify-center w-full max-w-5xl gap-8 md:gap-12">
             
             {/* 1. Cake Info Card (Left/Top Side) - Responsive sizing added */}
@@ -502,10 +553,8 @@ export default function TreasureHunt() {
             {/* 2. Circular Cake (Right/Bottom Side) - Fully Responsive Cake Component */}
             <div className="relative flex flex-col items-center w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
               
-              {/* Cake Wrapper: Scales dynamically but preserves aspect ratio */}
               <div className="relative w-full h-auto aspect-square max-w-[400px] mx-auto"> 
                 
-                {/* Inner container for the main cake elements (SVG, Drips, Toppings) */}
                 <div className="absolute inset-0">
                   <svg viewBox="0 0 400 400" className="w-full h-full">
                     <defs>
@@ -681,7 +730,7 @@ export default function TreasureHunt() {
                 {candlesLit && (
                   <div 
                     className="absolute w-full flex justify-center z-50 pointer-events-none"
-                    style={{ top: '3%', transform: 'translateY(-100%)' }} // Move above the cake circle
+                    style={{ top: '3%', transform: 'translateY(-100%)' }}
                   >
                     <div className="flex gap-4 sm:gap-6">
                       {[...Array(5)].map((_, i) => (
@@ -729,6 +778,7 @@ export default function TreasureHunt() {
               <h1 className="text-5xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent mb-2">
                 An Game
               </h1>
+              {/* Game count is 3 */}
               <p className="text-gray-600 text-lg">Complete all 3 games! 🎯</p>
             </div>
             
@@ -761,7 +811,7 @@ export default function TreasureHunt() {
               </div>
             )}
 
-            {/* ✨ NEW Game 2: Match Emojis */}
+            {/* Game 2: Match Emojis (UNCHANGED) */}
             {currentGame === 2 && (
               <div className="space-y-6">
                 <div className="bg-gradient-to-br from-purple-100 to-indigo-100 rounded-2xl p-6 border-2 border-purple-200">
@@ -805,6 +855,7 @@ export default function TreasureHunt() {
                 </p>
               </div>
             )}
+            
           </div>
         )}
       </div>
