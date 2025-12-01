@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, Gift, Sparkles, Star, Trophy, Cake, Zap, Crown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Heart, Gift, Sparkles, Star, Trophy, Cake, Zap, Crown, Volume2 } from 'lucide-react'; // Added Volume2
 
 // 🔊 SOUND EFFECT HELPER FUNCTION
 // ⚠️ IMPORTANT: Update these paths to your actual audio files (e.g., './assets/heart.mp3').
@@ -9,8 +9,11 @@ const AUDIO_PATHS = {
   CANDLE_BLOW: '/blow.mp3',
   CAKE_SLICE: '/bg.mp3',
   CELEBRATION: '/birthday.mp3',
+  // NEW: A silent/small sound to prime the audio context
+  PRIMER: '/pop.mp3', // Use any short sound file you have
 };
 
+// ⚠️ MODIFIED playSound to use isAudioActive check
 const playSound = (soundKey) => {
   const path = AUDIO_PATHS[soundKey];
   if (!path || path.includes('path/to/your')) {
@@ -20,8 +23,11 @@ const playSound = (soundKey) => {
   
   try {
     const sound = new Audio(path);
+    // Ensure sound is played. Autoplay policy check is managed by the new 'Start Screen'
     sound.play().catch(error => {
       console.error(`Audio playback failed for ${soundKey}:`, error);
+      // NOTE: If this fails, it's usually the Autoplay Policy. 
+      // The new start screen should prevent this, but it's good to keep the catch.
     });
   } catch (e) {
     console.error("Error creating or playing audio object:", e);
@@ -29,7 +35,7 @@ const playSound = (soundKey) => {
 };
 
 
-// Simple toast system
+// Simple toast system (no changes needed)
 const Toast = ({ message, onClose }) => (
   <div className="fixed top-4 right-4 bg-white rounded-2xl shadow-2xl p-4 animate-bounce z-50 max-w-sm border-4 border-pink-300">
     <div className="flex items-center gap-3">
@@ -56,6 +62,8 @@ export default function TreasureHunt() {
   const [candlesLit, setCandlesLit] = useState(true);
   const [showCelebration, setShowCelebration] = useState(false);
   const [sliceSound, setSliceSound] = useState(false);
+  // ✨ NEW STATE: Controls the audio/game start
+  const [isAudioActive, setIsAudioActive] = useState(false); 
 
   const hearts = [
     { id: 1, top: '15%', left: '10%', rotation: 'rotate-12' },
@@ -77,10 +85,21 @@ export default function TreasureHunt() {
 
   // 🎂 AUDIO EFFECT: Play sound when celebration page opens
   useEffect(() => {
-    if (showCelebration) {
+    // ⚠️ CHECK isAudioActive before playing
+    if (showCelebration && isAudioActive) { 
       playSound('CELEBRATION');
     }
-  }, [showCelebration]);
+  }, [showCelebration, isAudioActive]); // Added isAudioActive dependency
+
+  // 🎧 NEW HANDLER: For the start button
+  const handleStartGame = () => {
+    // 1. Set the flag to true to start the game
+    setIsAudioActive(true);
+    // 2. Play a sound immediately to ensure the audio context is unlocked
+    playSound('PRIMER'); 
+  };
+  
+  // --- Game Logic Handlers (Unchanged, they just call the updated playSound) ---
 
   // Game 1: Find Hearts
   const handleHeartClick = (heartId) => {
@@ -142,6 +161,35 @@ export default function TreasureHunt() {
       }
     }
   };
+
+  // 🌟 NEW START SCREEN RENDER
+  if (!isAudioActive) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-300 via-purple-300 to-indigo-400 flex items-center justify-center p-4">
+        <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-10 max-w-lg w-full text-center relative z-10">
+          <Sparkles className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-spin" style={{ animationDuration: '5s' }} />
+          <h1 className="text-4xl font-bold text-purple-600 mb-4">
+            An Game!
+          </h1>
+          <p className="text-xl text-gray-700 mb-8">
+            Click 'Start' to enable sounds and begin your special game!
+          </p>
+          <button
+            onClick={handleStartGame}
+            className="flex items-center justify-center mx-auto px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-extrabold text-xl rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition duration-300"
+          >
+            <Volume2 className="w-6 h-6 mr-3" />
+            Click to Start Game!
+          </button>
+          <p className="mt-4 text-sm text-gray-500">
+            (Required to play all the fun sound effects!)
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Rest of the existing code follows if (isAudioActive)
 
   if (showCelebration) {
     return (
@@ -247,7 +295,7 @@ export default function TreasureHunt() {
           <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-8 mb-6 border-4 border-pink-200">
             <Cake className="w-20 h-20 text-pink-400 mx-auto mb-4 animate-bounce" />
             <p className="text-3xl font-bold text-gray-800 mb-6">
-              🎉 HAPPY BIRTHDAY! 🎉
+              💖 HAPPY BIRTHDAY! 💋
             </p>
             
             {/* ENHANCED WISH SECTION - Animated, Cute, Responsive */}
@@ -257,7 +305,7 @@ export default function TreasureHunt() {
               <Sparkles className="absolute bottom-2 right-2 w-6 h-6 text-purple-400 opacity-70 animate-ping-slow" style={{ animationDelay: '1s' }} />
 
               <p className="text-3xl sm:text-4xl font-extrabold text-transparent bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text mb-4 animate-bounce-slow">
-                My Birthday Wish For You ✨
+                My Birthday Wish For You
               </p>
               
               <div className="h-0.5 bg-gradient-to-r from-pink-300 via-purple-300 to-pink-300 mb-4" />
@@ -266,18 +314,18 @@ export default function TreasureHunt() {
                 <span className="text-pink-500 font-bold">May this special day</span> bring you endless joy, boundless laughter, and all the happiness your heart can hold! 💝 
                 You deserve every wonderful moment, every dream come true, and all the love in the world! 
                 May this year ahead be filled with amazing adventures, sweet surprises, and memories that make you smile. 
-                <span className="text-purple-500 font-bold">You're absolutely incredible</span>, and today we celebrate YOU! 🌟🎂✨
+                <span className="text-purple-500 font-bold">You're absolutely incredible</span>, and today we celebrate YOU! 💋🎂💋
               </p>
             </div>
             {/* END ENHANCED WISH SECTION */}
 
             <p className="text-xl text-pink-600 font-bold">
-              Here's to the most amazing year ahead! 🥳💕
+              Here's to the most amazing year ahead! 🥳💕💋
             </p>
           </div>
           
           <div className="flex flex-wrap gap-3 justify-center">
-            {['🎂', '🎁', '🎉', '🎈', '💖', '✨', '🌟', '🎊', '👑', '🍰', '🎀', '💝'].map((emoji, i) => (
+            {['🎂', '🎁', '🎉', '💋', '💖', '✨', '🌟', '💋', '👑', '🍰', '💋', '💝'].map((emoji, i) => (
               <span key={i} className="text-5xl animate-bounce" style={{animationDelay: `${i * 0.1}s`}}>
                 {emoji}
               </span>
